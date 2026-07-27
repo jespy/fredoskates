@@ -186,19 +186,24 @@ function showNormalSkaterImage() {
     return;
   }
 
-  skaterImage.src =
-    NORMAL_SKATER_IMAGE;
+  // Restore the normal riding image
+  skaterImage.src = NORMAL_SKATER_IMAGE;
+  skaterImage.style.opacity = "1";
+  skaterImage.style.display = "block";
 
   skaterImage.classList.remove(
     "crash-skater"
   );
 
+  // Hide the jump/grab image until the next jump
   if (skaterGrabImage) {
-    skaterGrabImage.style.display = "";
+    skaterGrabImage.style.display = "none";
+    skaterGrabImage.style.opacity = "0";
   }
 
   player.classList.remove(
-    "crash-image"
+    "crash-image",
+    "grabbing-board"
   );
 }
 
@@ -208,19 +213,23 @@ function showCrashSkaterImage() {
     return;
   }
 
-  skaterImage.src =
-    CRASH_SKATER_IMAGE;
+  skaterImage.src = CRASH_SKATER_IMAGE;
+  skaterImage.style.display = "block";
+  skaterImage.style.opacity = "1";
 
   skaterImage.classList.add(
     "crash-skater"
   );
 
-  skaterImage.style.opacity = "1";
-
+  // Make sure the grab image is hidden during the crash
   if (skaterGrabImage) {
-    skaterGrabImage.style.display =
-      "none";
+    skaterGrabImage.style.display = "none";
+    skaterGrabImage.style.opacity = "0";
   }
+
+  player.classList.remove(
+    "grabbing-board"
+  );
 
   player.classList.add(
     "crash-image"
@@ -285,14 +294,18 @@ function startGame() {
   player.style.bottom =
     `${getGroundPosition()}px`;
 
-  player.classList.remove(
-    "crashed",
-    "jumping",
-    "riding-ramp",
-    "ramp-launch",
-    "grinding",
-    "grabbing-board"
-  );
+player.classList.remove(
+  "crashed",
+  "crash-image",
+  "jumping",
+  "riding-ramp",
+  "ramp-launch",
+  "grinding",
+  "grabbing-board"
+);
+
+showNormalSkaterImage();
+hideGrabImage();
 
   if (coinEffect) {
     coinEffect.classList.remove("show");
@@ -486,6 +499,15 @@ function scheduleGrabImage() {
 
 
 function showGrabImage() {
+  if (skaterImage) {
+    skaterImage.style.opacity = "0";
+  }
+
+  if (skaterGrabImage) {
+    skaterGrabImage.style.display = "block";
+    skaterGrabImage.style.opacity = "1";
+  }
+
   player.classList.add(
     "grabbing-board"
   );
@@ -496,6 +518,16 @@ function hideGrabImage() {
   clearTimeout(grabImageTimer);
 
   grabImageTimer = null;
+
+  if (skaterImage) {
+    skaterImage.style.display = "block";
+    skaterImage.style.opacity = "1";
+  }
+
+  if (skaterGrabImage) {
+    skaterGrabImage.style.display = "none";
+    skaterGrabImage.style.opacity = "0";
+  }
 
   player.classList.remove(
     "grabbing-board"

@@ -1521,6 +1521,29 @@ kbd {
   font-weight: 900;
 }
 
+.normal-skater {
+  display: block;
+  opacity: 1;
+}
+
+.grab-skater {
+  display: none;
+  opacity: 0;
+}
+
+#player.grabbing-board .normal-skater {
+  opacity: 0;
+}
+
+#player.grabbing-board .grab-skater {
+  display: block;
+  opacity: 1;
+}
+
+#player.crash-image .grab-skater {
+  display: none !important;
+  opacity: 0 !important;
+}
 
 /* =================================================
    FOOTER
