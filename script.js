@@ -1,0 +1,1814 @@
+"use strict";
+
+/* =================================================
+   ELEMENTS
+================================================= */
+
+const gameArea =
+  document.getElementById("game-area");
+
+const player =
+  document.getElementById("player");
+
+const skaterImage =
+  document.getElementById("skater-image");
+
+const skaterGrabImage =
+  document.getElementById("skater-grab-image");
+
+const obstaclesContainer =
+  document.getElementById("obstacles");
+
+const scoreDisplay =
+  document.getElementById("score");
+
+const highScoreDisplay =
+  document.getElementById("high-score");
+
+const coinCountDisplay =
+  document.getElementById("coin-count");
+
+const coinEffect =
+  document.getElementById("coin-effect");
+
+const startScreen =
+  document.getElementById("start-screen");
+
+const screenTitle =
+  document.getElementById("screen-title");
+
+const screenMessage =
+  document.getElementById("screen-message");
+
+const startButton =
+  document.getElementById("start-button");
+
+const farCityScroll =
+  document.getElementById("far-city-scroll");
+
+const cityScroll =
+  document.getElementById("city-scroll");
+
+const streetScroll =
+  document.getElementById("street-scroll");
+
+const foregroundScroll =
+  document.getElementById("foreground-scroll");
+
+
+/* =================================================
+   PLAYER IMAGES
+================================================= */
+
+const NORMAL_SKATER_IMAGE =
+  "images/skater.png";
+
+const CRASH_SKATER_IMAGE =
+  "images/skater-crash.png";
+
+
+/* =================================================
+   SETTINGS
+================================================= */
+
+const DESKTOP_GROUND_POSITION = 136;
+const MOBILE_GROUND_POSITION = 116;
+
+const GRAVITY = 0.78;
+
+const NORMAL_JUMP_POWER = 15;
+const RAMP_JUMP_POWER = 20;
+
+const STARTING_SPEED = 6;
+const MAXIMUM_SPEED = 13;
+
+const RAMP_CHANCE = 0.16;
+const BENCH_CHANCE = 0.2;
+
+const RAMP_RIDE_DURATION = 310;
+const RAMP_RIDE_HEIGHT = 53;
+
+const BENCH_GRIND_MINIMUM_TIME = 160;
+
+const MINIMUM_OBSTACLE_DELAY = 1000;
+const MAXIMUM_OBSTACLE_DELAY = 2200;
+
+const MINIMUM_OBSTACLE_GAP = 340;
+const HIGH_SPEED_EXTRA_GAP = 220;
+
+const RAMP_EXTRA_GAP = 180;
+const BENCH_EXTRA_GAP = 130;
+
+const GRAB_IMAGE_DELAY = 90;
+
+const FAR_CITY_SPEED_RATIO = 0.12;
+const CITY_SPEED_RATIO = 0.27;
+const STREET_SPEED_RATIO = 0.58;
+const FOREGROUND_SPEED_RATIO = 1;
+
+
+/* =================================================
+   PLAYER STATE
+================================================= */
+
+let playerHeight = 0;
+let playerVelocity = 0;
+
+let isJumping = false;
+let isRidingRamp = false;
+let rampLaunchActive = false;
+let isGrinding = false;
+
+let activeRamp = null;
+let activeBench = null;
+
+let rampRideStartTime = 0;
+let rampRideStartHeight = 0;
+
+let grindStartTime = 0;
+
+let grabImageTimer = null;
+
+
+/* =================================================
+   GAME STATE
+================================================= */
+
+let gameRunning = false;
+
+let gameSpeed = STARTING_SPEED;
+
+let score = 0;
+let coinCount = 0;
+
+let previousFrameTime = 0;
+
+let animationFrameId = null;
+let obstacleTimer = null;
+let scoreTimer = null;
+
+let obstacles = [];
+
+
+/* =================================================
+   SCROLLING STATE
+================================================= */
+
+let farCityPosition = 0;
+let cityPosition = 0;
+let streetPosition = 0;
+let foregroundPosition = 0;
+
+
+/* =================================================
+   HIGH SCORE
+================================================= */
+
+const savedHighScore =
+  Number(
+    localStorage.getItem(
+      "skateboardHighScore"
+    )
+  ) || 0;
+
+if (highScoreDisplay) {
+  highScoreDisplay.textContent =
+    savedHighScore;
+}
+
+
+/* =================================================
+   PLAYER IMAGE FUNCTIONS
+================================================= */
+
+function showNormalSkaterImage() {
+  if (!skaterImage) {
+    return;
+  }
+
+  skaterImage.src =
+    NORMAL_SKATER_IMAGE;
+
+  skaterImage.classList.remove(
+    "crash-skater"
+  );
+
+  if (skaterGrabImage) {
+    skaterGrabImage.style.display = "";
+  }
+
+  player.classList.remove(
+    "crash-image"
+  );
+}
+
+
+function showCrashSkaterImage() {
+  if (!skaterImage) {
+    return;
+  }
+
+  skaterImage.src =
+    CRASH_SKATER_IMAGE;
+
+  skaterImage.classList.add(
+    "crash-skater"
+  );
+
+  skaterImage.style.opacity = "1";
+
+  if (skaterGrabImage) {
+    skaterGrabImage.style.display =
+      "none";
+  }
+
+  player.classList.add(
+    "crash-image"
+  );
+}
+
+/* =================================================
+   GROUND POSITION
+================================================= */
+
+function getGroundPosition() {
+  return window.innerWidth <= 520
+    ? MOBILE_GROUND_POSITION
+    : DESKTOP_GROUND_POSITION;
+}
+
+
+/* =================================================
+   START GAME
+================================================= */
+
+function startGame() {
+  clearGame();
+
+  score = 0;
+  coinCount = 0;
+
+  gameSpeed = STARTING_SPEED;
+
+  playerHeight = 0;
+  playerVelocity = 0;
+
+  isJumping = false;
+  isRidingRamp = false;
+  rampLaunchActive = false;
+  isGrinding = false;
+
+  activeRamp = null;
+  activeBench = null;
+
+  rampRideStartTime = 0;
+  rampRideStartHeight = 0;
+  grindStartTime = 0;
+
+  farCityPosition = 0;
+  cityPosition = 0;
+  streetPosition = 0;
+  foregroundPosition = 0;
+
+  if (scoreDisplay) {
+    scoreDisplay.textContent = "0";
+  }
+
+  if (coinCountDisplay) {
+    coinCountDisplay.textContent = "0";
+  }
+
+  resetScrollingLayers();
+  hideGrabImage();
+  showNormalSkaterImage();
+
+  player.style.bottom =
+    `${getGroundPosition()}px`;
+
+  player.classList.remove(
+    "crashed",
+    "jumping",
+    "riding-ramp",
+    "ramp-launch",
+    "grinding",
+    "grabbing-board"
+  );
+
+  if (coinEffect) {
+    coinEffect.classList.remove("show");
+  }
+
+  if (startScreen) {
+    startScreen.classList.add("hidden");
+  }
+
+  gameArea.classList.remove(
+    "game-paused"
+  );
+
+  gameArea.classList.add(
+    "game-running"
+  );
+
+  gameArea.focus();
+
+  gameRunning = true;
+
+  previousFrameTime =
+    performance.now();
+
+  scheduleNextObstacle();
+
+  scoreTimer =
+    window.setInterval(() => {
+      if (!gameRunning) {
+        return;
+      }
+
+      score += 1;
+
+      if (scoreDisplay) {
+        scoreDisplay.textContent =
+          score;
+      }
+
+      gameSpeed = Math.min(
+        MAXIMUM_SPEED,
+        STARTING_SPEED +
+          score * 0.022
+      );
+    }, 100);
+
+  animationFrameId =
+    requestAnimationFrame(gameLoop);
+}
+
+
+/* =================================================
+   GAME LOOP
+================================================= */
+
+function gameLoop(currentTime) {
+  if (!gameRunning) {
+    return;
+  }
+
+  const deltaTime = Math.min(
+    (
+      currentTime -
+      previousFrameTime
+    ) / 16.67,
+    2
+  );
+
+  previousFrameTime = currentTime;
+
+  updateScrollingWorld(deltaTime);
+  updateObstacles(deltaTime);
+
+  checkRampLaunches();
+  checkBenchGrinding(currentTime);
+
+  updatePlayer(
+    deltaTime,
+    currentTime
+  );
+
+  checkBenchJumpRewards();
+  checkCollisions();
+
+  animationFrameId =
+    requestAnimationFrame(gameLoop);
+}
+
+
+/* =================================================
+   PLAYER UPDATE
+================================================= */
+
+function updatePlayer(
+  deltaTime,
+  currentTime
+) {
+  if (
+    isGrinding &&
+    activeBench
+  ) {
+    updateBenchGrind(currentTime);
+    return;
+  }
+
+  if (
+    isRidingRamp &&
+    activeRamp
+  ) {
+    updateRampRide(currentTime);
+    return;
+  }
+
+  if (isJumping) {
+    playerVelocity -=
+      GRAVITY * deltaTime;
+
+    playerHeight +=
+      playerVelocity * deltaTime;
+
+    if (playerHeight <= 0) {
+      playerHeight = 0;
+      playerVelocity = 0;
+
+      isJumping = false;
+      rampLaunchActive = false;
+
+      player.classList.remove(
+        "jumping",
+        "ramp-launch"
+      );
+
+      hideGrabImage();
+    }
+  }
+
+  setPlayerHeight(playerHeight);
+}
+
+
+/* =================================================
+   NORMAL JUMP
+================================================= */
+
+function jump() {
+  if (
+    !gameRunning ||
+    isJumping ||
+    isRidingRamp ||
+    isGrinding
+  ) {
+    return;
+  }
+
+  isJumping = true;
+  rampLaunchActive = false;
+
+  playerVelocity =
+    NORMAL_JUMP_POWER;
+
+  player.classList.remove(
+    "riding-ramp",
+    "ramp-launch",
+    "grinding"
+  );
+
+  player.classList.add("jumping");
+
+  scheduleGrabImage();
+}
+
+
+/* =================================================
+   BOARD-GRAB IMAGE
+================================================= */
+
+function scheduleGrabImage() {
+  clearTimeout(grabImageTimer);
+
+  grabImageTimer =
+    window.setTimeout(() => {
+      if (
+        gameRunning &&
+        isJumping &&
+        !isGrinding
+      ) {
+        showGrabImage();
+      }
+    }, GRAB_IMAGE_DELAY);
+}
+
+
+function showGrabImage() {
+  player.classList.add(
+    "grabbing-board"
+  );
+}
+
+
+function hideGrabImage() {
+  clearTimeout(grabImageTimer);
+
+  grabImageTimer = null;
+
+  player.classList.remove(
+    "grabbing-board"
+  );
+}
+
+
+/* =================================================
+   PLAYER HEIGHT
+================================================= */
+
+function setPlayerHeight(height) {
+  player.style.bottom =
+    `${
+      getGroundPosition() +
+      height
+    }px`;
+}
+
+
+/* =================================================
+   RAMP DETECTION
+================================================= */
+
+function checkRampLaunches() {
+  if (
+    isRidingRamp ||
+    isGrinding ||
+    rampLaunchActive
+  ) {
+    return;
+  }
+
+  const playerRect =
+    player.getBoundingClientRect();
+
+  const boardArea = {
+    left:
+      playerRect.left +
+      playerRect.width * 0.12,
+
+    right:
+      playerRect.right -
+      playerRect.width * 0.04,
+
+    top:
+      playerRect.bottom -
+      playerRect.height * 0.27,
+
+    bottom:
+      playerRect.bottom
+  };
+
+  for (const obstacle of obstacles) {
+    if (
+      obstacle.type !== "ramp" ||
+      obstacle.activated
+    ) {
+      continue;
+    }
+
+    const rampRect =
+      obstacle.element
+        .getBoundingClientRect();
+
+    const touchingRamp =
+      boardArea.right >
+        rampRect.left &&
+      boardArea.left <
+        rampRect.right &&
+      boardArea.bottom >
+        rampRect.top &&
+      boardArea.top <
+        rampRect.bottom;
+
+    const closeToGround =
+      playerHeight < 30;
+
+    if (
+      touchingRamp &&
+      closeToGround
+    ) {
+      obstacle.activated = true;
+
+      beginRampRide(obstacle);
+
+      break;
+    }
+  }
+}
+
+
+/* =================================================
+   BEGIN RAMP RIDE
+================================================= */
+
+function beginRampRide(ramp) {
+  isRidingRamp = true;
+  isJumping = false;
+  isGrinding = false;
+
+  rampLaunchActive = false;
+
+  playerVelocity = 0;
+
+  rampRideStartTime =
+    performance.now();
+
+  rampRideStartHeight =
+    Math.max(playerHeight, 0);
+
+  activeRamp = ramp;
+
+  hideGrabImage();
+
+  player.classList.remove(
+    "jumping",
+    "ramp-launch",
+    "grinding"
+  );
+
+  player.classList.add(
+    "riding-ramp"
+  );
+}
+
+
+/* =================================================
+   UPDATE RAMP RIDE
+================================================= */
+
+function updateRampRide(currentTime) {
+  if (!activeRamp) {
+    finishRampLaunch();
+    return;
+  }
+
+  const rampRect =
+    activeRamp.element
+      .getBoundingClientRect();
+
+  const playerRect =
+    player.getBoundingClientRect();
+
+  const boardCenterX =
+    playerRect.left +
+    playerRect.width * 0.55;
+
+  const horizontalProgress =
+    clamp(
+      (
+        boardCenterX -
+        rampRect.left
+      ) / rampRect.width,
+      0,
+      1
+    );
+
+  const timeProgress =
+    clamp(
+      (
+        currentTime -
+        rampRideStartTime
+      ) / RAMP_RIDE_DURATION,
+      0,
+      1
+    );
+
+  const progress =
+    Math.max(
+      horizontalProgress,
+      timeProgress * 0.82
+    );
+
+  const easedProgress =
+    progress *
+    progress *
+    (3 - 2 * progress);
+
+  playerHeight =
+    rampRideStartHeight +
+    RAMP_RIDE_HEIGHT *
+      easedProgress;
+
+  setPlayerHeight(playerHeight);
+
+  if (
+    horizontalProgress >= 0.91 ||
+    timeProgress >= 1
+  ) {
+    finishRampLaunch();
+  }
+}
+
+
+/* =================================================
+   FINISH RAMP LAUNCH
+================================================= */
+
+function finishRampLaunch() {
+  isRidingRamp = false;
+  isJumping = true;
+
+  rampLaunchActive = true;
+
+  playerVelocity =
+    RAMP_JUMP_POWER;
+
+  activeRamp = null;
+
+  player.classList.remove(
+    "riding-ramp"
+  );
+
+  player.classList.add(
+    "jumping",
+    "ramp-launch"
+  );
+
+  showGrabImage();
+}
+
+
+/* =================================================
+   BENCH GRIND DETECTION
+================================================= */
+
+function checkBenchGrinding(currentTime) {
+  if (
+    !gameRunning ||
+    isGrinding ||
+    isRidingRamp ||
+    !isJumping
+  ) {
+    return;
+  }
+
+  const playerRect =
+    player.getBoundingClientRect();
+
+  const boardLeft =
+    playerRect.left +
+    playerRect.width * 0.08;
+
+  const boardRight =
+    playerRect.right -
+    playerRect.width * 0.04;
+
+  const boardBottom =
+    playerRect.bottom -
+    playerRect.height * 0.02;
+
+  for (const obstacle of obstacles) {
+    if (
+      obstacle.type !==
+        "grind-bench" ||
+      obstacle.grindStarted ||
+      obstacle.rewardGiven
+    ) {
+      continue;
+    }
+
+    const benchRect =
+      obstacle.element
+        .getBoundingClientRect();
+
+    const horizontallyAboveBench =
+      boardRight >
+        benchRect.left + 12 &&
+      boardLeft <
+        benchRect.right - 12;
+
+    const falling =
+      playerVelocity <= 1;
+
+    const nearBenchTop =
+      boardBottom >=
+        benchRect.top - 18 &&
+      boardBottom <=
+        benchRect.top + 16;
+
+    if (
+      horizontallyAboveBench &&
+      falling &&
+      nearBenchTop
+    ) {
+      startBenchGrind(
+        obstacle,
+        currentTime
+      );
+
+      break;
+    }
+  }
+}
+
+
+/* =================================================
+   START BENCH GRIND
+================================================= */
+
+function startBenchGrind(
+  bench,
+  currentTime
+) {
+  isGrinding = true;
+  isJumping = false;
+  isRidingRamp = false;
+
+  playerVelocity = 0;
+
+  activeBench = bench;
+  grindStartTime = currentTime;
+
+  bench.grindStarted = true;
+
+  hideGrabImage();
+
+  player.classList.remove(
+    "jumping",
+    "ramp-launch",
+    "riding-ramp"
+  );
+
+  player.classList.add(
+    "grinding"
+  );
+
+  setPlayerHeight(
+    getBenchGrindHeight(bench)
+  );
+}
+
+
+/* =================================================
+   BENCH HEIGHT
+================================================= */
+
+function getBenchGrindHeight(bench) {
+  const benchRect =
+    bench.element
+      .getBoundingClientRect();
+
+  const gameRect =
+    gameArea.getBoundingClientRect();
+
+  const benchTopInsideGame =
+    benchRect.top -
+    gameRect.top;
+
+  const groundY =
+    gameArea.clientHeight -
+    getGroundPosition();
+
+  return Math.max(
+    0,
+    groundY -
+      benchTopInsideGame -
+      player.offsetHeight * 0.04
+  );
+}
+
+
+/* =================================================
+   UPDATE BENCH GRIND
+================================================= */
+
+function updateBenchGrind(currentTime) {
+  if (!activeBench) {
+    stopBenchGrind(false);
+    return;
+  }
+
+  const benchRect =
+    activeBench.element
+      .getBoundingClientRect();
+
+  const playerRect =
+    player.getBoundingClientRect();
+
+  setPlayerHeight(
+    getBenchGrindHeight(activeBench)
+  );
+
+  const boardCenterX =
+    playerRect.left +
+    playerRect.width * 0.55;
+
+  const reachedBenchEnd =
+    benchRect.right <=
+    boardCenterX + 8;
+
+  if (reachedBenchEnd) {
+    const grindDuration =
+      currentTime -
+      grindStartTime;
+
+    stopBenchGrind(
+      grindDuration >=
+        BENCH_GRIND_MINIMUM_TIME
+    );
+  }
+}
+
+
+/* =================================================
+   STOP BENCH GRIND
+================================================= */
+
+function stopBenchGrind(successful) {
+  const finishedBench =
+    activeBench;
+
+  isGrinding = false;
+  activeBench = null;
+
+  player.classList.remove(
+    "grinding"
+  );
+
+  isJumping = true;
+  playerVelocity = 7;
+
+  player.classList.add(
+    "jumping"
+  );
+
+  scheduleGrabImage();
+
+  if (
+    successful &&
+    finishedBench
+  ) {
+    finishedBench.grindCompleted =
+      true;
+
+    giveObstacleReward(
+      finishedBench,
+      2
+    );
+  }
+}
+
+
+/* =================================================
+   BENCH JUMP REWARD
+================================================= */
+
+function checkBenchJumpRewards() {
+  const playerRect =
+    player.getBoundingClientRect();
+
+  obstacles.forEach((obstacle) => {
+    if (
+      obstacle.type !==
+        "grind-bench" ||
+      obstacle.rewardGiven ||
+      obstacle.grindStarted
+    ) {
+      return;
+    }
+
+    const benchRect =
+      obstacle.element
+        .getBoundingClientRect();
+
+    const completelyPassed =
+      benchRect.right <
+      playerRect.left;
+
+    if (completelyPassed) {
+      obstacle.jumpedOver = true;
+
+      giveObstacleReward(
+        obstacle,
+        1
+      );
+    }
+  });
+}
+
+
+/* =================================================
+   SAFE OBSTACLE SPACING
+================================================= */
+
+function getMinimumObstacleGap() {
+  const speedProgress =
+    clamp(
+      (
+        gameSpeed -
+        STARTING_SPEED
+      ) /
+      (
+        MAXIMUM_SPEED -
+        STARTING_SPEED
+      ),
+      0,
+      1
+    );
+
+  let requiredGap =
+    MINIMUM_OBSTACLE_GAP +
+    HIGH_SPEED_EXTRA_GAP *
+      speedProgress;
+
+  const previousObstacle =
+    obstacles[
+      obstacles.length - 1
+    ];
+
+  if (previousObstacle) {
+    if (
+      previousObstacle.type ===
+      "ramp"
+    ) {
+      requiredGap +=
+        RAMP_EXTRA_GAP;
+    }
+
+    if (
+      previousObstacle.type ===
+      "grind-bench"
+    ) {
+      requiredGap +=
+        BENCH_EXTRA_GAP;
+    }
+  }
+
+  return requiredGap;
+}
+
+
+function canSpawnObstacle() {
+  if (obstacles.length === 0) {
+    return true;
+  }
+
+  const newestObstacle =
+    obstacles[
+      obstacles.length - 1
+    ];
+
+  if (
+    !newestObstacle ||
+    !newestObstacle.element
+  ) {
+    return true;
+  }
+
+  const newestRect =
+    newestObstacle.element
+      .getBoundingClientRect();
+
+  const gameRect =
+    gameArea.getBoundingClientRect();
+
+  const distanceFromSpawnEdge =
+    gameRect.right -
+    newestRect.right;
+
+  return (
+    distanceFromSpawnEdge >=
+    getMinimumObstacleGap()
+  );
+}
+
+
+/* =================================================
+   CREATE OBSTACLE
+================================================= */
+
+function createObstacle() {
+  if (!gameRunning) {
+    return;
+  }
+
+  if (!canSpawnObstacle()) {
+    clearTimeout(obstacleTimer);
+
+    obstacleTimer =
+      window.setTimeout(
+        createObstacle,
+        100
+      );
+
+    return;
+  }
+
+  const obstacleType =
+    chooseObstacleType();
+
+  const obstacleElement =
+    document.createElement("div");
+
+  obstacleElement.className =
+    `obstacle ${obstacleType}`;
+
+  const startingX =
+    gameArea.clientWidth + 100;
+
+  obstacleElement.style.left =
+    `${startingX}px`;
+
+  obstaclesContainer.appendChild(
+    obstacleElement
+  );
+
+  obstacles.push({
+    element: obstacleElement,
+    x: startingX,
+    type: obstacleType,
+
+    cleared: false,
+    activated: false,
+
+    rewardGiven: false,
+
+    grindStarted: false,
+    grindCompleted: false,
+    jumpedOver: false
+  });
+
+  scheduleNextObstacle();
+}
+
+
+/* =================================================
+   SELECT OBSTACLE
+================================================= */
+
+function chooseObstacleType() {
+  const randomNumber =
+    Math.random();
+
+  if (
+    randomNumber <
+    RAMP_CHANCE
+  ) {
+    return "ramp";
+  }
+
+  if (
+    randomNumber <
+    RAMP_CHANCE +
+      BENCH_CHANCE
+  ) {
+    return "grind-bench";
+  }
+
+  const regularObstacles = [
+    "cone",
+    "box",
+    "trash-can"
+  ];
+
+  return regularObstacles[
+    Math.floor(
+      Math.random() *
+      regularObstacles.length
+    )
+  ];
+}
+
+
+/* =================================================
+   OBSTACLE TIMER
+================================================= */
+
+function scheduleNextObstacle() {
+  clearTimeout(obstacleTimer);
+
+  const speedProgress =
+    clamp(
+      (
+        gameSpeed -
+        STARTING_SPEED
+      ) /
+      (
+        MAXIMUM_SPEED -
+        STARTING_SPEED
+      ),
+      0,
+      1
+    );
+
+  const minimumDelay =
+    MINIMUM_OBSTACLE_DELAY -
+    speedProgress * 100;
+
+  const maximumDelay =
+    MAXIMUM_OBSTACLE_DELAY -
+    speedProgress * 250;
+
+  const randomDelay =
+    minimumDelay +
+    Math.random() *
+      (
+        maximumDelay -
+        minimumDelay
+      );
+
+  obstacleTimer =
+    window.setTimeout(
+      createObstacle,
+      randomDelay
+    );
+}
+
+
+/* =================================================
+   MOVE OBSTACLES
+================================================= */
+
+function updateObstacles(deltaTime) {
+  const playerRect =
+    player.getBoundingClientRect();
+
+  obstacles.forEach((obstacle) => {
+    obstacle.x -=
+      gameSpeed * deltaTime;
+
+    obstacle.element.style.left =
+      `${obstacle.x}px`;
+
+    const obstacleRect =
+      obstacle.element
+        .getBoundingClientRect();
+
+    const passedPlayer =
+      !obstacle.cleared &&
+      obstacleRect.right <
+        playerRect.left;
+
+    if (passedPlayer) {
+      obstacle.cleared = true;
+
+      const regularObstacle =
+        obstacle.type === "cone" ||
+        obstacle.type === "box" ||
+        obstacle.type ===
+          "trash-can";
+
+      if (
+        regularObstacle &&
+        !obstacle.rewardGiven
+      ) {
+        giveObstacleReward(
+          obstacle,
+          1
+        );
+      }
+    }
+  });
+
+  obstacles =
+    obstacles.filter((obstacle) => {
+      const width =
+        obstacle.element.offsetWidth;
+
+      const offScreen =
+        obstacle.x + width < -100;
+
+      if (!offScreen) {
+        return true;
+      }
+
+      obstacle.element.remove();
+
+      if (
+        activeRamp === obstacle
+      ) {
+        activeRamp = null;
+        isRidingRamp = false;
+      }
+
+      if (
+        activeBench === obstacle
+      ) {
+        activeBench = null;
+        isGrinding = false;
+
+        player.classList.remove(
+          "grinding"
+        );
+      }
+
+      return false;
+    });
+}
+
+
+/* =================================================
+   COLLISIONS
+================================================= */
+
+function checkCollisions() {
+  if (
+    isRidingRamp ||
+    isGrinding
+  ) {
+    return;
+  }
+
+  const playerRect =
+    player.getBoundingClientRect();
+
+  const playerHitbox = {
+    left:
+      playerRect.left +
+      playerRect.width * 0.27,
+
+    right:
+      playerRect.right -
+      playerRect.width * 0.22,
+
+    top:
+      playerRect.top +
+      playerRect.height * 0.16,
+
+    bottom:
+      playerRect.bottom -
+      playerRect.height * 0.1
+  };
+
+  for (const obstacle of obstacles) {
+    if (
+      obstacle.type === "ramp"
+    ) {
+      continue;
+    }
+
+    const obstacleRect =
+      obstacle.element
+        .getBoundingClientRect();
+
+    if (
+      obstacle.type ===
+      "grind-bench"
+    ) {
+      const benchSideHitbox = {
+        left:
+          obstacleRect.left + 14,
+
+        right:
+          obstacleRect.right - 14,
+
+        top:
+          obstacleRect.top + 18,
+
+        bottom:
+          obstacleRect.bottom - 3
+      };
+
+      if (
+        rectanglesOverlap(
+          playerHitbox,
+          benchSideHitbox
+        )
+      ) {
+        endGame();
+        return;
+      }
+
+      continue;
+    }
+
+    const obstacleHitbox = {
+      left:
+        obstacleRect.left + 12,
+
+      right:
+        obstacleRect.right - 12,
+
+      top:
+        obstacleRect.top + 10,
+
+      bottom:
+        obstacleRect.bottom - 5
+    };
+
+    if (
+      rectanglesOverlap(
+        playerHitbox,
+        obstacleHitbox
+      )
+    ) {
+      endGame();
+      return;
+    }
+  }
+}
+
+
+/* =================================================
+   RECTANGLE COLLISION
+================================================= */
+
+function rectanglesOverlap(
+  first,
+  second
+) {
+  return (
+    first.right > second.left &&
+    first.left < second.right &&
+    first.bottom > second.top &&
+    first.top < second.bottom
+  );
+}
+
+
+/* =================================================
+   REWARDS
+================================================= */
+
+function giveObstacleReward(
+  obstacle,
+  amount
+) {
+  if (
+    !obstacle ||
+    obstacle.rewardGiven
+  ) {
+    return;
+  }
+
+  obstacle.rewardGiven = true;
+
+  coinCount += amount;
+
+  if (coinCountDisplay) {
+    coinCountDisplay.textContent =
+      coinCount;
+  }
+
+  showCoinEffect(amount);
+}
+
+
+/* =================================================
+   COIN EFFECT
+================================================= */
+
+function showCoinEffect(amount = 1) {
+  if (!coinEffect) {
+    return;
+  }
+
+  const amountDisplay =
+    coinEffect.querySelector("span");
+
+  if (amountDisplay) {
+    amountDisplay.textContent =
+      `+${amount}`;
+  }
+
+  coinEffect.classList.remove(
+    "show"
+  );
+
+  void coinEffect.offsetWidth;
+
+  coinEffect.classList.add(
+    "show"
+  );
+}
+
+
+/* =================================================
+   SCROLLING WORLD
+================================================= */
+
+function updateScrollingWorld(
+  deltaTime
+) {
+  farCityPosition =
+    updateLayerPosition(
+      farCityScroll,
+      farCityPosition,
+      gameSpeed *
+        FAR_CITY_SPEED_RATIO *
+        deltaTime
+    );
+
+  cityPosition =
+    updateLayerPosition(
+      cityScroll,
+      cityPosition,
+      gameSpeed *
+        CITY_SPEED_RATIO *
+        deltaTime
+    );
+
+  streetPosition =
+    updateLayerPosition(
+      streetScroll,
+      streetPosition,
+      gameSpeed *
+        STREET_SPEED_RATIO *
+        deltaTime
+    );
+
+  foregroundPosition =
+    updateLayerPosition(
+      foregroundScroll,
+      foregroundPosition,
+      gameSpeed *
+        FOREGROUND_SPEED_RATIO *
+        deltaTime
+    );
+}
+
+
+/* =================================================
+   UPDATE SCROLLING LAYER
+================================================= */
+
+function updateLayerPosition(
+  element,
+  currentPosition,
+  movement
+) {
+  if (!element) {
+    return currentPosition;
+  }
+
+  currentPosition -= movement;
+
+  const resetWidth =
+    gameArea.clientWidth;
+
+  if (
+    currentPosition <=
+    -resetWidth
+  ) {
+    currentPosition +=
+      resetWidth;
+  }
+
+  element.style.transform =
+    `translate3d(
+      ${currentPosition}px,
+      0,
+      0
+    )`;
+
+  return currentPosition;
+}
+
+
+/* =================================================
+   RESET SCROLLING
+================================================= */
+
+function resetScrollingLayers() {
+  [
+    farCityScroll,
+    cityScroll,
+    streetScroll,
+    foregroundScroll
+  ].forEach((layer) => {
+    if (layer) {
+      layer.style.transform =
+        "translate3d(0, 0, 0)";
+    }
+  });
+}
+
+
+/* =================================================
+   END GAME
+================================================= */
+
+function endGame() {
+  if (!gameRunning) {
+    return;
+  }
+
+  gameRunning = false;
+
+  clearTimeout(obstacleTimer);
+  clearTimeout(grabImageTimer);
+  clearInterval(scoreTimer);
+
+  cancelAnimationFrame(
+    animationFrameId
+  );
+
+  isJumping = false;
+  isRidingRamp = false;
+  rampLaunchActive = false;
+  isGrinding = false;
+
+  activeRamp = null;
+  activeBench = null;
+
+  hideGrabImage();
+
+  gameArea.classList.remove(
+    "game-running"
+  );
+
+  gameArea.classList.add(
+    "game-paused"
+  );
+
+  player.classList.remove(
+    "jumping",
+    "riding-ramp",
+    "ramp-launch",
+    "grinding",
+    "grabbing-board"
+  );
+
+  player.classList.add(
+    "crashed"
+  );
+
+  showCrashSkaterImage();
+
+  if (coinEffect) {
+    coinEffect.classList.remove(
+      "show"
+    );
+  }
+
+  updateHighScore();
+
+  window.setTimeout(() => {
+    if (screenTitle) {
+      screenTitle.textContent =
+        "You Crashed!";
+    }
+
+    if (screenMessage) {
+      screenMessage.textContent =
+        `You scored ${score} points and collected ${coinCount} coins.`;
+    }
+
+    if (startButton) {
+      startButton.textContent =
+        "Ride Again";
+    }
+
+    if (startScreen) {
+      startScreen.classList.remove(
+        "hidden"
+      );
+    }
+  }, 550);
+}
+
+
+/* =================================================
+   HIGH SCORE
+================================================= */
+
+function updateHighScore() {
+  const currentHighScore =
+    Number(
+      localStorage.getItem(
+        "skateboardHighScore"
+      )
+    ) || 0;
+
+  if (score <= currentHighScore) {
+    return;
+  }
+
+  localStorage.setItem(
+    "skateboardHighScore",
+    score
+  );
+
+  if (highScoreDisplay) {
+    highScoreDisplay.textContent =
+      score;
+  }
+}
+
+
+/* =================================================
+   CLEAR GAME
+================================================= */
+
+function clearGame() {
+  clearTimeout(obstacleTimer);
+  clearTimeout(grabImageTimer);
+  clearInterval(scoreTimer);
+
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(
+      animationFrameId
+    );
+  }
+
+  obstacles.forEach((obstacle) => {
+    obstacle.element.remove();
+  });
+
+  obstacles = [];
+
+  if (obstaclesContainer) {
+    obstaclesContainer.innerHTML = "";
+  }
+
+  activeRamp = null;
+  activeBench = null;
+
+  isJumping = false;
+  isRidingRamp = false;
+  isGrinding = false;
+  rampLaunchActive = false;
+
+  grindStartTime = 0;
+  grabImageTimer = null;
+
+  hideGrabImage();
+}
+
+
+/* =================================================
+   HELPERS
+================================================= */
+
+function clamp(
+  value,
+  minimum,
+  maximum
+) {
+  return Math.min(
+    Math.max(value, minimum),
+    maximum
+  );
+}
+
+
+/* =================================================
+   INPUT
+================================================= */
+
+function handleKeyboardInput(event) {
+  const jumpKeys = [
+    "Space",
+    "ArrowUp",
+    "KeyW"
+  ];
+
+  if (
+    !jumpKeys.includes(
+      event.code
+    )
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+
+  jump();
+}
+
+
+function handleGameInput(event) {
+  if (
+    event.target.closest(
+      "#start-button"
+    )
+  ) {
+    return;
+  }
+
+  jump();
+}
+
+
+/* =================================================
+   EVENTS
+================================================= */
+
+if (startButton) {
+  startButton.addEventListener(
+    "click",
+    startGame
+  );
+}
+
+if (gameArea) {
+  gameArea.addEventListener(
+    "pointerdown",
+    handleGameInput
+  );
+}
+
+window.addEventListener(
+  "keydown",
+  handleKeyboardInput
+);
+
+
+/* =================================================
+   RESIZE
+================================================= */
+
+window.addEventListener(
+  "resize",
+  () => {
+    setPlayerHeight(playerHeight);
+
+    farCityPosition = 0;
+    cityPosition = 0;
+    streetPosition = 0;
+    foregroundPosition = 0;
+
+    resetScrollingLayers();
+  }
+);
