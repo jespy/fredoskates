@@ -76,8 +76,8 @@ let playerAnimationFinished = false;
    SETTINGS
 ================================================= */
 
-const DESKTOP_GROUND_POSITION = 136;
-const MOBILE_GROUND_POSITION = 116;
+const DESKTOP_GROUND_POSITION = 82;
+const MOBILE_GROUND_POSITION = 70;
 
 const GRAVITY = 0.78;
 
@@ -110,6 +110,37 @@ const FAR_CITY_SPEED_RATIO = 0.12;
 const CITY_SPEED_RATIO = 0.27;
 const STREET_SPEED_RATIO = 0.58;
 const FOREGROUND_SPEED_RATIO = 1;
+
+const BUILDING_MINIMUM_GAP = 140;
+const BUILDING_MAXIMUM_GAP = 220;
+const BUILDING_BUFFER = 420;
+
+const DESKTOP_BUILDING_BOTTOM = 30;
+const MOBILE_BUILDING_BOTTOM = 90;
+
+
+/* Modular background buildings supplied with the game. */
+const BUILDING_ASSETS = [
+  {
+    src: "images/environment/buildings/building-1.png",
+    aspect: 1105 / 576,
+    desktopHeight: 400,
+    mobileHeight: 185
+  },
+  {
+    src: "images/environment/buildings/building-2.png",
+    aspect: 1311 / 442,
+    desktopHeight: 300,
+    mobileHeight: 151
+  },
+  {
+    src: "images/environment/buildings/skate-shop.png",
+    aspect: 825 / 589,
+    desktopHeight: 350,
+    mobileHeight: 189 
+  }
+];
+
 
 
 /* =================================================
@@ -163,6 +194,9 @@ let farCityPosition = 0;
 let cityPosition = 0;
 let streetPosition = 0;
 let foregroundPosition = 0;
+
+let backgroundBuildings = [];
+let lastBuildingAssetIndex = -1;
 
 
 /* =================================================
@@ -290,6 +324,7 @@ function startGame() {
   }
 
   resetScrollingLayers();
+  resetRandomBuildings();
   hideGrabImage();
   showNormalSkaterImage();
 
@@ -1501,14 +1536,7 @@ function updateScrollingWorld(
         deltaTime
     );
 
-  cityPosition =
-    updateLayerPosition(
-      cityScroll,
-      cityPosition,
-      gameSpeed *
-        CITY_SPEED_RATIO *
-        deltaTime
-    );
+  updateRandomBuildings(deltaTime);
 
   streetPosition =
     updateLayerPosition(
@@ -1546,7 +1574,10 @@ function updateLayerPosition(
   currentPosition -= movement;
 
   const resetWidth =
-    gameArea.clientWidth;
+    Math.max(
+      element.scrollWidth / 2,
+      gameArea.clientWidth
+    );
 
   if (
     currentPosition <=
@@ -1583,6 +1614,135 @@ function resetScrollingLayers() {
         "translate3d(0, 0, 0)";
     }
   });
+}
+
+
+/* =================================================
+   RANDOM MODULAR BUILDINGS
+================================================= */
+
+function randomBetween(minimum, maximum) {
+  return minimum + Math.random() * (maximum - minimum);
+}
+
+function chooseBuildingAsset() {
+  if (BUILDING_ASSETS.length === 1) {
+    lastBuildingAssetIndex = 0;
+    return BUILDING_ASSETS[0];
+  }
+
+  let index = lastBuildingAssetIndex;
+  while (index === lastBuildingAssetIndex) {
+    index = Math.floor(Math.random() * BUILDING_ASSETS.length);
+  }
+
+  lastBuildingAssetIndex = index;
+  return BUILDING_ASSETS[index];
+}
+
+function createRandomBuilding(xPosition) {
+  if (!cityScroll) return null;
+
+  const asset = chooseBuildingAsset();
+  const isMobile = window.innerWidth <= 520;
+
+  const baseHeight = isMobile
+    ? asset.mobileHeight
+    : asset.desktopHeight;
+
+  const scaleVariation = randomBetween(0.9, 1.08);
+
+  const height = Math.round(
+    baseHeight * scaleVariation
+  );
+
+  const width = Math.round(
+    height * asset.aspect
+  );
+
+  const image = document.createElement("img");
+
+  image.className = "random-building";
+  image.src = asset.src;
+  image.alt = "";
+  image.draggable = false;
+
+  image.style.width = `${width}px`;
+  image.style.height = `${height}px`;
+
+  const buildingBottom = isMobile
+    ? MOBILE_BUILDING_BOTTOM
+    : DESKTOP_BUILDING_BOTTOM;
+
+  image.style.bottom = `${buildingBottom}px`;
+
+  image.style.setProperty(
+    "--building-x",
+    `${xPosition}px`
+  );
+
+  cityScroll.appendChild(image);
+
+  const building = {
+    element: image,
+    x: xPosition,
+    width
+  };
+
+  backgroundBuildings.push(building);
+
+  return building;
+}
+function getLastBuildingEnd() {
+  if (!backgroundBuildings.length) return -60;
+
+  return Math.max(
+    ...backgroundBuildings.map((building) => building.x + building.width)
+  );
+}
+
+function fillBuildingLayer() {
+  if (!cityScroll || !gameArea) return;
+
+  const targetEnd = gameArea.clientWidth + BUILDING_BUFFER;
+  let nextX = getLastBuildingEnd();
+
+  while (nextX < targetEnd) {
+    const gap = randomBetween(BUILDING_MINIMUM_GAP, BUILDING_MAXIMUM_GAP);
+    const building = createRandomBuilding(nextX + gap);
+    if (!building) break;
+    nextX = building.x + building.width;
+  }
+}
+
+function resetRandomBuildings() {
+  if (!cityScroll) return;
+
+  cityScroll.innerHTML = "";
+  backgroundBuildings = [];
+  lastBuildingAssetIndex = -1;
+
+  createRandomBuilding(-80);
+  fillBuildingLayer();
+}
+
+function updateRandomBuildings(deltaTime) {
+  if (!cityScroll || !gameArea) return;
+
+  const movement = gameSpeed * CITY_SPEED_RATIO * deltaTime;
+
+  backgroundBuildings.forEach((building) => {
+    building.x -= movement;
+    building.element.style.setProperty("--building-x", `${building.x}px`);
+  });
+
+  backgroundBuildings = backgroundBuildings.filter((building) => {
+    const visible = building.x + building.width > -120;
+    if (!visible) building.element.remove();
+    return visible;
+  });
+
+  fillBuildingLayer();
 }
 
 
@@ -1841,8 +2001,10 @@ window.addEventListener(
     foregroundPosition = 0;
 
     resetScrollingLayers();
+    resetRandomBuildings();
   }
 );
 
-// Display the new character before the first game starts.
+// Display the new character and environment before the first game starts.
 setPlayerAnimation("idle", true);
+resetRandomBuildings();

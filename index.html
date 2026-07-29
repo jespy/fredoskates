@@ -22,12 +22,7 @@
       <!-- Header banner -->
 
       <header id="game-header">
-        <img
-          id="header-banner"
-          src="images/fredoskates.png"
-          alt="Fredo Skates"
-          draggable="false"
-        >
+
       </header>
 
       <!-- Scoreboard -->
@@ -69,141 +64,34 @@
         aria-label="Fredo Skates game"
       >
 
-        <!-- Static sky -->
-
-        <div class="sky-layer">
-
-          <div class="sun"></div>
-
-          <div class="cloud cloud-one"></div>
-          <div class="cloud cloud-two"></div>
-          <div class="cloud cloud-three"></div>
-
-        </div>
-
-        <!-- Scrolling distant buildings -->
+        <!-- Parallax background: distant skyline -->
 
         <div
           id="far-city-scroll"
           class="scroll-layer far-city-scroll"
+          aria-hidden="true"
         >
-
-          <div class="scroll-copy">
-
-            <div class="far-city">
-
-              <div class="far-building far-building-one"></div>
-              <div class="far-building far-building-two"></div>
-              <div class="far-building far-building-three"></div>
-              <div class="far-building far-building-four"></div>
-              <div class="far-building far-building-five"></div>
-              <div class="far-building far-building-six"></div>
-
-            </div>
-
-          </div>
-
-          <div class="scroll-copy">
-
-            <div class="far-city">
-
-              <div class="far-building far-building-one"></div>
-              <div class="far-building far-building-two"></div>
-              <div class="far-building far-building-three"></div>
-              <div class="far-building far-building-four"></div>
-              <div class="far-building far-building-five"></div>
-              <div class="far-building far-building-six"></div>
-
-            </div>
-
-          </div>
-
+          <div class="scroll-copy far-background-copy"></div>
+          <div class="scroll-copy far-background-copy"></div>
         </div>
 
-        <!-- Scrolling main city -->
+        <!-- Parallax background: neighborhood storefronts -->
 
         <div
           id="city-scroll"
-          class="scroll-layer city-scroll"
-        >
+          class="city-scroll building-layer"
+          aria-hidden="true"
+        ></div>
 
-          <div class="scroll-copy">
-
-            <div class="city-background">
-
-              <div class="building building-one"></div>
-              <div class="building building-two"></div>
-              <div class="building building-three"></div>
-              <div class="building building-four"></div>
-              <div class="building building-five"></div>
-
-            </div>
-
-          </div>
-
-          <div class="scroll-copy">
-
-            <div class="city-background">
-
-              <div class="building building-one"></div>
-              <div class="building building-two"></div>
-              <div class="building building-three"></div>
-              <div class="building building-four"></div>
-              <div class="building building-five"></div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-        <!-- Scrolling street decorations -->
+        <!-- Reserved extra parallax layer -->
 
         <div
           id="street-scroll"
           class="scroll-layer street-scroll"
+          aria-hidden="true"
         >
-
-          <div class="scroll-copy">
-
-            <div class="street-decoration tree decoration-one">
-              <span class="tree-top"></span>
-              <span class="tree-trunk"></span>
-            </div>
-
-            <div class="street-decoration lamp decoration-two">
-              <span class="lamp-light"></span>
-            </div>
-
-            <div class="street-decoration bench decoration-three"></div>
-
-            <div class="street-decoration tree decoration-four">
-              <span class="tree-top"></span>
-              <span class="tree-trunk"></span>
-            </div>
-
-          </div>
-
-          <div class="scroll-copy">
-
-            <div class="street-decoration tree decoration-one">
-              <span class="tree-top"></span>
-              <span class="tree-trunk"></span>
-            </div>
-
-            <div class="street-decoration lamp decoration-two">
-              <span class="lamp-light"></span>
-            </div>
-
-            <div class="street-decoration bench decoration-three"></div>
-
-            <div class="street-decoration tree decoration-four">
-              <span class="tree-top"></span>
-              <span class="tree-trunk"></span>
-            </div>
-
-          </div>
-
+          <div class="scroll-copy"></div>
+          <div class="scroll-copy"></div>
         </div>
 
         <!-- Scrolling sidewalk and road -->
@@ -211,36 +99,10 @@
         <div
           id="foreground-scroll"
           class="scroll-layer foreground-scroll"
+          aria-hidden="true"
         >
-
-          <div class="scroll-copy">
-
-            <div class="sidewalk"></div>
-            <div class="curb"></div>
-
-            <div class="road">
-              <span class="road-mark road-mark-one"></span>
-              <span class="road-mark road-mark-two"></span>
-              <span class="road-mark road-mark-three"></span>
-              <span class="road-mark road-mark-four"></span>
-            </div>
-
-          </div>
-
-          <div class="scroll-copy">
-
-            <div class="sidewalk"></div>
-            <div class="curb"></div>
-
-            <div class="road">
-              <span class="road-mark road-mark-one"></span>
-              <span class="road-mark road-mark-two"></span>
-              <span class="road-mark road-mark-three"></span>
-              <span class="road-mark road-mark-four"></span>
-            </div>
-
-          </div>
-
+          <div class="scroll-copy sidewalk-copy"></div>
+          <div class="scroll-copy sidewalk-copy"></div>
         </div>
 
         <!-- Obstacles created by JavaScript -->
