@@ -1752,3 +1752,68 @@ kbd {
     bottom: -10px;
   }
 }
+
+/* =================================================
+   NEW CHARACTER SPRITE ANIMATION
+================================================= */
+
+#player {
+  width: clamp(92px, 9.5vw, 124px);
+  height: clamp(92px, 10vw, 128px);
+  transform-origin: 50% 88%;
+}
+
+.player-sprite {
+  position: absolute;
+  left: 50%;
+  bottom: -3px;
+  width: 132%;
+  height: 132%;
+  display: block;
+  object-fit: contain;
+  object-position: center bottom;
+  transform: translateX(-50%) !important;
+  transform-origin: 50% 88%;
+  filter: drop-shadow(3px 4px 0 rgba(23, 32, 42, 0.28));
+  image-rendering: auto;
+}
+
+#player.crashed,
+#player.crash-image {
+  animation: crash-player-slide 0.48s ease-out forwards !important;
+}
+
+#player.crashed .player-sprite,
+#player.crash-image .player-sprite,
+#player.jumping .player-sprite,
+#player.ramp-launch .player-sprite,
+#player.riding-ramp .player-sprite,
+#player.grinding .player-sprite {
+  animation: none !important;
+  transform: translateX(-50%) !important;
+}
+
+@keyframes crash-player-slide {
+  from { transform: translateX(0); }
+  to   { transform: translateX(42px); }
+}
+
+#player.crashed .player-shadow,
+#player.crash-image .player-shadow,
+#player.jumping .player-shadow,
+#player.ramp-launch .player-shadow,
+#player.grinding .player-shadow {
+  opacity: 0;
+}
+
+@media (max-width: 520px) {
+  #player {
+    width: 82px;
+    height: 90px;
+  }
+
+  .player-sprite {
+    width: 136%;
+    height: 136%;
+  }
+}
