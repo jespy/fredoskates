@@ -9,7 +9,7 @@ const BUILDING_BUFFER = 420;
 
 const DESKTOP_BUILDING_BOTTOM = 30;
 const MOBILE_BUILDING_BOTTOM = 90;
-const PORTRAIT_BUILDING_BOTTOM = 45;
+const PORTRAIT_BUILDING_BOTTOM = 15;  //was 45
 
 const gameArea =
   document.getElementById("game-area");
