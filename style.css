@@ -2113,7 +2113,7 @@ kbd {
 .random-building {
   position: absolute;
   left: 0;
-  bottom: -2px;
+
   height: var(--building-height, 270px);
   width: auto;
   max-width: none;
