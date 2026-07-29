@@ -10,11 +10,8 @@ const gameArea =
 const player =
   document.getElementById("player");
 
-const skaterImage =
-  document.getElementById("skater-image");
-
-const skaterGrabImage =
-  document.getElementById("skater-grab-image");
+const playerSprite =
+  document.getElementById("player-sprite");
 
 const obstaclesContainer =
   document.getElementById("obstacles");
@@ -57,14 +54,22 @@ const foregroundScroll =
 
 
 /* =================================================
-   PLAYER IMAGES
+   PLAYER ANIMATIONS
 ================================================= */
 
-const NORMAL_SKATER_IMAGE =
-  "images/skater.png";
+const PLAYER_ANIMATIONS = {
+  idle:  { frames: 6, fps: 4,  loop: true },
+  push:  { frames: 6, fps: 10, loop: true },
+  ride:  { frames: 6, fps: 8,  loop: true },
+  jump:  { frames: 7, fps: 12, loop: false },
+  trick: { frames: 8, fps: 14, loop: false },
+  fall:  { frames: 6, fps: 10, loop: false }
+};
 
-const CRASH_SKATER_IMAGE =
-  "images/skater-crash.png";
+let playerAnimation = "idle";
+let playerAnimationFrame = 0;
+let playerAnimationElapsed = 0;
+let playerAnimationFinished = false;
 
 
 /* =================================================
@@ -178,62 +183,59 @@ if (highScoreDisplay) {
 
 
 /* =================================================
-   PLAYER IMAGE FUNCTIONS
+   PLAYER ANIMATION FUNCTIONS
 ================================================= */
 
-function showNormalSkaterImage() {
-  if (!skaterImage) {
-    return;
+function setPlayerAnimation(name, restart = false) {
+  if (!PLAYER_ANIMATIONS[name] || !playerSprite) return;
+
+  if (playerAnimation !== name || restart) {
+    playerAnimation = name;
+    playerAnimationFrame = 0;
+    playerAnimationElapsed = 0;
+    playerAnimationFinished = false;
+    renderPlayerFrame();
   }
-
-  // Restore the normal riding image
-  skaterImage.src = NORMAL_SKATER_IMAGE;
-  skaterImage.style.opacity = "1";
-  skaterImage.style.display = "block";
-
-  skaterImage.classList.remove(
-    "crash-skater"
-  );
-
-  // Hide the jump/grab image until the next jump
-  if (skaterGrabImage) {
-    skaterGrabImage.style.display = "none";
-    skaterGrabImage.style.opacity = "0";
-  }
-
-  player.classList.remove(
-    "crash-image",
-    "grabbing-board"
-  );
 }
 
+function renderPlayerFrame() {
+  if (!playerSprite) return;
+  playerSprite.src = `images/player/${playerAnimation}-${playerAnimationFrame}.png`;
+}
+
+function updatePlayerAnimation(deltaTime) {
+  const animation = PLAYER_ANIMATIONS[playerAnimation];
+  if (!animation || playerAnimationFinished) return;
+
+  playerAnimationElapsed += deltaTime * 16.67;
+  const frameDuration = 1000 / animation.fps;
+
+  while (playerAnimationElapsed >= frameDuration) {
+    playerAnimationElapsed -= frameDuration;
+    playerAnimationFrame += 1;
+
+    if (playerAnimationFrame >= animation.frames) {
+      if (animation.loop) {
+        playerAnimationFrame = 0;
+      } else {
+        playerAnimationFrame = animation.frames - 1;
+        playerAnimationFinished = true;
+      }
+    }
+
+    renderPlayerFrame();
+  }
+}
+
+function showNormalSkaterImage() {
+  setPlayerAnimation(gameRunning ? "ride" : "idle", true);
+  player.classList.remove("crash-image", "grabbing-board");
+}
 
 function showCrashSkaterImage() {
-  if (!skaterImage) {
-    return;
-  }
-
-  skaterImage.src = CRASH_SKATER_IMAGE;
-  skaterImage.style.display = "block";
-  skaterImage.style.opacity = "1";
-
-  skaterImage.classList.add(
-    "crash-skater"
-  );
-
-  // Make sure the grab image is hidden during the crash
-  if (skaterGrabImage) {
-    skaterGrabImage.style.display = "none";
-    skaterGrabImage.style.opacity = "0";
-  }
-
-  player.classList.remove(
-    "grabbing-board"
-  );
-
-  player.classList.add(
-    "crash-image"
-  );
+  setPlayerAnimation("fall", true);
+  player.classList.remove("grabbing-board");
+  player.classList.add("crash-image");
 }
 
 /* =================================================
@@ -387,6 +389,8 @@ function gameLoop(currentTime) {
     currentTime
   );
 
+  updatePlayerAnimation(deltaTime);
+
   checkBenchJumpRewards();
   checkCollisions();
 
@@ -439,6 +443,7 @@ function updatePlayer(
       );
 
       hideGrabImage();
+      setPlayerAnimation("ride", true);
     }
   }
 
@@ -474,6 +479,7 @@ function jump() {
 
   player.classList.add("jumping");
 
+  setPlayerAnimation("jump", true);
   scheduleGrabImage();
 }
 
@@ -499,39 +505,16 @@ function scheduleGrabImage() {
 
 
 function showGrabImage() {
-  if (skaterImage) {
-    skaterImage.style.opacity = "0";
-  }
-
-  if (skaterGrabImage) {
-    skaterGrabImage.style.display = "block";
-    skaterGrabImage.style.opacity = "1";
-  }
-
-  player.classList.add(
-    "grabbing-board"
-  );
+  if (!gameRunning || !isJumping) return;
+  setPlayerAnimation("trick", true);
+  player.classList.add("grabbing-board");
 }
 
 
 function hideGrabImage() {
   clearTimeout(grabImageTimer);
-
   grabImageTimer = null;
-
-  if (skaterImage) {
-    skaterImage.style.display = "block";
-    skaterImage.style.opacity = "1";
-  }
-
-  if (skaterGrabImage) {
-    skaterGrabImage.style.display = "none";
-    skaterGrabImage.style.opacity = "0";
-  }
-
-  player.classList.remove(
-    "grabbing-board"
-  );
+  player.classList.remove("grabbing-board");
 }
 
 
@@ -652,6 +635,8 @@ function beginRampRide(ramp) {
   player.classList.add(
     "riding-ramp"
   );
+
+  setPlayerAnimation("ride", true);
 }
 
 
@@ -747,6 +732,7 @@ function finishRampLaunch() {
     "ramp-launch"
   );
 
+  setPlayerAnimation("trick", true);
   showGrabImage();
 }
 
@@ -856,6 +842,8 @@ function startBenchGrind(
     "grinding"
   );
 
+  setPlayerAnimation("ride", true);
+
   setPlayerHeight(
     getBenchGrindHeight(bench)
   );
@@ -955,6 +943,7 @@ function stopBenchGrind(successful) {
     "jumping"
   );
 
+  setPlayerAnimation("jump", true);
   scheduleGrabImage();
 
   if (
@@ -1648,6 +1637,16 @@ function endGame() {
 
   showCrashSkaterImage();
 
+  const crashAnimationStart = performance.now();
+  function playCrashAnimation(now) {
+    updatePlayerAnimation((now - (playCrashAnimation.lastTime || crashAnimationStart)) / 16.67);
+    playCrashAnimation.lastTime = now;
+    if (!playerAnimationFinished && playerAnimation === "fall") {
+      requestAnimationFrame(playCrashAnimation);
+    }
+  }
+  requestAnimationFrame(playCrashAnimation);
+
   if (coinEffect) {
     coinEffect.classList.remove(
       "show"
@@ -1844,3 +1843,6 @@ window.addEventListener(
     resetScrollingLayers();
   }
 );
+
+// Display the new character before the first game starts.
+setPlayerAnimation("idle", true);
