@@ -3,14 +3,6 @@
 /* =================================================
    ELEMENTS
 ================================================= */
-const BUILDING_MINIMUM_GAP = 140;
-const BUILDING_MAXIMUM_GAP = 220;
-const BUILDING_BUFFER = 420;
-
-const DESKTOP_BUILDING_BOTTOM = 30;
-const MOBILE_BUILDING_BOTTOM = 90;
-const PORTRAIT_BUILDING_BOTTOM = 33;  //was 45
-
 const gameArea =
   document.getElementById("game-area");
 
@@ -118,6 +110,13 @@ const CITY_SPEED_RATIO = 0.27;
 const STREET_SPEED_RATIO = 0.58;
 const FOREGROUND_SPEED_RATIO = 1;
 
+const BUILDING_MINIMUM_GAP = 140;
+const BUILDING_MAXIMUM_GAP = 220;
+const BUILDING_BUFFER = 420;
+
+const DESKTOP_BUILDING_BOTTOM = 30;
+const MOBILE_BUILDING_BOTTOM = 90;
+const PORTRAIT_BUILDING_BOTTOM = 45;
 
 
 /* Modular background buildings supplied with the game. */
@@ -660,6 +659,9 @@ function beginRampRide(ramp) {
 
   activeRamp = ramp;
 
+  // Riding up the ramp earns one coin. Jumping completely over it earns none.
+  giveObstacleReward(ramp, 1);
+
   hideGrabImage();
 
   player.classList.remove(
@@ -774,6 +776,24 @@ function finishRampLaunch() {
 
 
 /* =================================================
+   GRINDABLE OBSTACLE HELPERS
+================================================= */
+
+function isGrindObstacle(obstacleOrType) {
+  const type =
+    typeof obstacleOrType === "string"
+      ? obstacleOrType
+      : obstacleOrType?.type;
+
+  return (
+    type === "bench" ||
+    type === "grind-bar" ||
+    type === "grind-bench"
+  );
+}
+
+
+/* =================================================
    BENCH GRIND DETECTION
 ================================================= */
 
@@ -804,8 +824,7 @@ function checkBenchGrinding(currentTime) {
 
   for (const obstacle of obstacles) {
     if (
-      obstacle.type !==
-        "grind-bench" ||
+      !isGrindObstacle(obstacle) ||
       obstacle.grindStarted ||
       obstacle.rewardGiven
     ) {
@@ -1007,8 +1026,7 @@ function checkBenchJumpRewards() {
 
   obstacles.forEach((obstacle) => {
     if (
-      obstacle.type !==
-        "grind-bench" ||
+      !isGrindObstacle(obstacle) ||
       obstacle.rewardGiven ||
       obstacle.grindStarted
     ) {
@@ -1074,8 +1092,7 @@ function getMinimumObstacleGap() {
     }
 
     if (
-      previousObstacle.type ===
-      "grind-bench"
+      isGrindObstacle(previousObstacle)
     ) {
       requiredGap +=
         BENCH_EXTRA_GAP;
@@ -1200,13 +1217,23 @@ function chooseObstacleType() {
     RAMP_CHANCE +
       BENCH_CHANCE
   ) {
-    return "grind-bench";
+    const grindObstacles = [
+      "bench",
+      "grind-bar"
+    ];
+
+    return grindObstacles[
+      Math.floor(
+        Math.random() *
+        grindObstacles.length
+      )
+    ];
   }
 
   const regularObstacles = [
-    "cone",
     "box",
-    "trash-can"
+    "trash-can",
+    "hydrant"
   ];
 
   return regularObstacles[
@@ -1291,10 +1318,9 @@ function updateObstacles(deltaTime) {
       obstacle.cleared = true;
 
       const regularObstacle =
-        obstacle.type === "cone" ||
         obstacle.type === "box" ||
-        obstacle.type ===
-          "trash-can";
+        obstacle.type === "trash-can" ||
+        obstacle.type === "hydrant";
 
       if (
         regularObstacle &&
@@ -1390,8 +1416,7 @@ function checkCollisions() {
         .getBoundingClientRect();
 
     if (
-      obstacle.type ===
-      "grind-bench"
+      isGrindObstacle(obstacle)
     ) {
       const benchSideHitbox = {
         left:
